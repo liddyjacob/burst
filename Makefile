@@ -12,12 +12,12 @@ CC_OPTS=-Wall
 all : ${EXE}
 
 burst: burst.o
-    ${CC} $^ -o $@
+	${CC} $^ -o $@
 
 #Not quite sure what $^ and $@ and $< are...
 
 burst.o: burst.c
-    ${CC} ${CC_OPTS} -c $<
+	${CC} ${CC_OPTS} -c $<
 
 clean :
-    rm -f ${EXE} ${OBJS} ${LIBS}
+	rm -f ${EXE} ${OBJS} ${LIBS}
