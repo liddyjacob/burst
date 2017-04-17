@@ -3,7 +3,7 @@
 
 EXE=burst
 #objects:
-OBJS=burst.o makeargv.o process.o
+OBJS=burst.o makeargv.o read_process.o
 
 #Compiler + options
 CC=gcc
@@ -17,7 +17,7 @@ debug: executable
 
 executable: ${EXE}
 
-burst: burst.o makeargv.o
+burst: burst.o makeargv.o read_process.o
 	${CC} $^ -o $@
 
 #Not quite sure what $^ and $@ and $< are...
@@ -28,7 +28,7 @@ burst.o: burst.c
 makeargv.o: makeargv.c makeargv.h
 	${CC} ${CC_OPTS} -c $<  
 
-process.o: process.c
+read_process.o: read_process.c
 	${CC} ${CC_OPTS} -c $<
 
 clean :

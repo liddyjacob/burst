@@ -1,5 +1,5 @@
 /*
-  process_read.c
+  read_process.c
 
   process:
   Fan-structured processes that handles the splitting of 
@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 
 /*Prototype for process: */
 int process(int fd);
@@ -29,13 +30,24 @@ int process(int fd);
 int read_process(const char* filepath){
   /*Infile file descriptor*/
   
-  int infd = open(argv[1], O_RDONLY){
+  int infd = open(filepath, O_RDONLY);
   #ifdef DEBUG
-  fprintf(stderr, "Filedescriptor: %d\n", infd);
+    fprintf(stderr, "Filedescriptor: %d\n", infd); 
+  #endif
 
-  process(infd)
+  /* Handle bad file descriptors: */
+  if (infd < 0){
+    fprintf(stderr, "Could not open %s\n", filepath);
+    return -1;
+  }
+  
+  //Process the file -
+  int returnValue = process(infd);
 
+  //Close and finish read_process.
+  close(infd);
 
+  return returnValue;
 }
 
 
