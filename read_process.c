@@ -16,18 +16,18 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <time.h>
-#include <stdlib.h>
+#include <stdlib.h> //system
 #include <string.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
 
 /*Prototype for process: */
-int process(int fd);
+int split(int, int, int);
 
 
 //TODO add options for argument to process.
-int read_process(const char* filepath){
+int read_process(const char* filepath, int linesperfile){
   /*Infile file descriptor*/
   
   int infd = open(filepath, O_RDONLY);
@@ -40,9 +40,17 @@ int read_process(const char* filepath){
     fprintf(stderr, "Could not open %s\n", filepath);
     return -1;
   }
+
+
+  /*TODO Fix this **nasty** hack to get the line number of lines
+  a file */
+  char *command = "wc -l";
+  strcat(command, filepath);
+
+  int lines = system(command);
   
-  //Process the file -
-  int returnValue = process(infd);
+  //Process the file - split into pieces
+  int returnValue = split(infd, linesperfile, lines);
 
   //Close and finish read_process.
   close(infd);
@@ -53,17 +61,11 @@ int read_process(const char* filepath){
 
 
 //Get rid of argv and argv, change to files.
-int process(int fd) {
+//fd - file descriptor | lines_splitFs - lines per split file
+//lines_F - lines in original file.
+int split(int fd, int lines_splitFs, int lines_F) {
 
-
-
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s processes\n", argv[0]);
-    return 1;
-  }
-  
-  // determine the fan length
-  int n = argc - 1; // atoi(argv[1]);
+  /* A file will be created for each split */
 
   // construct our fan
   pid_t childpid;
