@@ -25,6 +25,9 @@
 #include "makeargv.h" // Make argument array
 #include <unistd.h> // Fork()
 #include <stdlib.h> // Free()
+#ifdef DEBUG
+#include <stdio.h> //printf
+#endif
 
 int main(int argc, char* argv[]){
     /* First do error handling, input processing*/
