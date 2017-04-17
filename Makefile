@@ -3,7 +3,7 @@
 
 EXE=burst
 #objects:
-OBJS=burst.o makeargv.o
+OBJS=burst.o makeargv.o process.o
 
 #Compiler + options
 CC=gcc
@@ -27,6 +27,9 @@ burst.o: burst.c
 
 makeargv.o: makeargv.c makeargv.h
 	${CC} ${CC_OPTS} -c $<  
+
+process.o: process.c
+	${CC} ${CC_OPTS} -c $<
 
 clean :
 	rm -f ${EXE} ${OBJS} ${LIBS}
