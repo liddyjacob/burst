@@ -32,6 +32,7 @@
 int main(int argc, char* argv[]){
     /* First do error handling, input processing*/
 
+    
     char** nargv;
     int n_tokens = makeargv(argv[1], " ", &nargv); // How many arguments
 
@@ -41,12 +42,15 @@ int main(int argc, char* argv[]){
       printf("|%s|\n", nargv[i]);
     #endif
 
-    free(nargv[0]);
+    //First argument 
+    
 
     /* Then create files, and use fork to split into different processes */
 
     fork();
 
 
+
+    free(nargv[0]);
     return 0;
 }

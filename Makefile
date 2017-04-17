@@ -9,11 +9,13 @@ OBJS=burst.o makeargv.o
 CC=gcc
 CC_OPTS=-Wall
 
-all: ${EXE}
+all: executable
 
 #For debug mode, add debug to cc_opts
 debug: CC_OPTS += -DDEBUG
-debug: all
+debug: executable
+
+executable: ${EXE}
 
 burst: burst.o makeargv.o
 	${CC} $^ -o $@
