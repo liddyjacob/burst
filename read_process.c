@@ -66,21 +66,29 @@ int read_process(const char* filepath, int linesperfile){
 int split(int fd, int lines_splitFs, int lines_F) {
 
   /* A file will be created for each split */
+  int num_files = lines_F / lines_splitFs;
  
+  //Dealing with integer division:
+  if (num_files * lines_splitFs < lines_F){
+    ++num_files;
+  }
+     
 
-  // construct our fan
+  // construct our fan - One for each file
   pid_t childpid;
   int i;
   char* name = 0;
-  for (i = 1; i <= n; ++i) {
-    name = strdup(argv[i]);
+  for (i = 1; i <= num_files; ++i) {
+    name = strdup("fd");
+//    char* intstr; itoa(i, intstr, 10);
+//    strcat(name, intstr);
     if ((childpid = fork()) <= 0)
       break;
   }
   
   // have something to do
   srand(time(NULL) * i);
-  sleep(rand() % (2 * n));
+  sleep(rand() % (2 * num_files));
 
   // parent waits for all the children
   if (childpid != 0) {
