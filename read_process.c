@@ -44,16 +44,16 @@ int read_process(const char* filepath, int linesperfile){
 
   /*TODO Fix this **nasty** hack to get the line number of lines
   a file */
-  char *command = "wc -l";
-  strcat(command, filepath);
+  char *command = NULL;
+  int filepath_Len = strlen(filepath);
+  //malloc(wc -l ;     filepath   ;| cut -d' ' -f1) 
 
-  int lines = system(command);
-  
   //Process the file - split into pieces
   int returnValue = split(infd, linesperfile, lines);
 
   //Close and finish read_process.
   close(infd);
+  free(command);
 
   return returnValue;
 }
