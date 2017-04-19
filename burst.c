@@ -25,6 +25,7 @@
 #include "makeargv.h" // Make argument array
 #include <unistd.h> // Fork()
 #include <stdlib.h> // Free()
+#include "read_process.h"
 #ifdef DEBUG
 #include <stdio.h> //printf
 #endif
@@ -43,6 +44,7 @@ int main(int argc, char* argv[]){
     #endif
 
     //First argument 
+    
     
 
     /* Then create files, and use fork to split into different processes */

@@ -7,7 +7,7 @@ OBJS=burst.o makeargv.o read_process.o
 
 #Compiler + options
 CC=gcc
-CC_OPTS=-Wall
+CC_OPTS=-Wall -std=c99
 
 all: executable
 

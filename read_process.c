@@ -79,7 +79,7 @@ int split(int fd, int lines_splitFs, int lines_F) {
   int i;
   char* name = 0;
   for (i = 1; i <= num_files; ++i) {
-    name = strdup("fd");
+    name = "fd";
 //    char* intstr; itoa(i, intstr, 10);
 //    strcat(name, intstr);
     if ((childpid = fork()) <= 0)
