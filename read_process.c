@@ -23,7 +23,7 @@
 #include <fcntl.h>
 
 /*Prototype for process: */
-int split(int, int, int);
+int split(int);
 
 
 //TODO add options for argument to process.
@@ -44,45 +44,39 @@ int read_process(const char* filepath, int linesperfile){
 
   /*TODO Fix this **nasty** hack to get the line number of lines
   a file */
-  char *command = NULL;
-  int filepath_Len = strlen(filepath);
-  //malloc(wc -l ;     filepath   ;| cut -d' ' -f1) 
-
   //Process the file - split into pieces
-  int returnValue = split(infd, linesperfile, lines);
+  int returnValue = split(infd, filename);
 
   //Close and finish read_process.
   close(infd);
-  free(command);
-
+  
   return returnValue;
 }
 
 
-
+//Assume file is 501 to 999 lines
 //Get rid of argv and argv, change to files.
 //fd - file descriptor | lines_splitFs - lines per split file
 //lines_F - lines in original file.
-int split(int fd, int lines_splitFs, int lines_F) {
+int split(int fd, char* filename) {
 
   /* A file will be created for each split */
-  int num_files = lines_F / lines_splitFs;
  
-  //Dealing with integer division:
-  if (num_files * lines_splitFs < lines_F){
-    ++num_files;
-  }
+
      
+  int num_files = 2;
 
   // construct our fan - One for each file
   pid_t childpid;
   int i;
-  char* name = 0;
+  char* name = malloc(3);
   for (i = 1; i <= num_files; ++i) {
-    name = "fd";
-//    char* intstr; itoa(i, intstr, 10);
-//    strcat(name, intstr);
-    if ((childpid = fork()) <= 0)
+    strcpy(name, "fd");
+    if (i == 1)
+        strcat(name, "1");
+    if (i == 2)
+        strcat(name, "2");
+   if ((childpid = fork()) <= 0)
       break;
   }
   
@@ -99,9 +93,12 @@ int split(int fd, int lines_splitFs, int lines_F) {
 	break;
       fprintf(stderr, "Child %ld is done\n", (long)nchildpid);
     }
-  }
+  } else {
+  #ifdef DEBUG
+    fprintf(stderr, "Filename %s", name);
+  #endif
   
-  fprintf(stderr, "i:%d Name: %s Processing: process ID: %ld  parent ID: %ld  child ID: %ld\n",
+    fprintf(stderr, "i:%d Name: %s Processing: process ID: %ld  parent ID: %ld  child ID: %ld\n",
 	  i, name, (long) getpid(), (long) getppid(), (long) childpid);
 
   free(name);

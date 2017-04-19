@@ -14,7 +14,7 @@
 int read_process(const char* filepath, int linesperfile);
 
 /* Fork the file depending on linesperfile */
-void split(int,int,int);
+void split(int, char*);
 
 #endif
 
