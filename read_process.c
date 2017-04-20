@@ -87,7 +87,9 @@ int split(int fd, const char* filename) {
     while ((nchildpid = wait(NULL))) {
       if (errno == ECHILD)
 	break;
+      #ifdef DEBUG
       fprintf(stderr, "Child %ld is done\n", (long)nchildpid);
+      #endif
     }
   } else {
 
@@ -100,9 +102,9 @@ int split(int fd, const char* filename) {
 
   #ifdef DEBUG
     fprintf(stderr, "File descriptor: %d\n", outfd);
-  #endif
     fprintf(stderr, "i:%d Name: %s Processing: process ID: %ld  parent ID: %ld  child ID: %ld\n",
 	  i, name, (long) getpid(), (long) getppid(), (long) childpid);
+  #endif
 
   }
   free(name);

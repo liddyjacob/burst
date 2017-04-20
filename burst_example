@@ -4,3 +4,10 @@
 #Examples of the burst command
 #GENERAL USE:
 #burst [FILE] [OPTIONS] 
+
+burst data.txt
+wc --lines data.txt
+wc --lines data.txt(1)
+wc --lines data.txt(2)
+
+cat data.txt(1) data.txt(2) | diff - data.txt
