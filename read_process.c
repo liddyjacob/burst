@@ -15,15 +15,14 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <time.h>
 #include <stdlib.h> //system
 #include <string.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <sys/stat.h> //S_IRUSR
 /*Prototype for process: */
-int split(int);
+int split(int, const char*);
 
 
 //TODO add options for argument to process.
@@ -45,7 +44,7 @@ int read_process(const char* filepath, int linesperfile){
   /*TODO Fix this **nasty** hack to get the line number of lines
   a file */
   //Process the file - split into pieces
-  int returnValue = split(infd, filename);
+  int returnValue = split(infd, filepath);
 
   //Close and finish read_process.
   close(infd);
@@ -58,7 +57,7 @@ int read_process(const char* filepath, int linesperfile){
 //Get rid of argv and argv, change to files.
 //fd - file descriptor | lines_splitFs - lines per split file
 //lines_F - lines in original file.
-int split(int fd, char* filename) {
+int split(int fd, const char* filename) {
 
   /* A file will be created for each split */
  
@@ -69,21 +68,18 @@ int split(int fd, char* filename) {
   // construct our fan - One for each file
   pid_t childpid;
   int i;
-  char* name = malloc(3);
+  char* name = malloc(strlen(filename) + 3);
   for (i = 1; i <= num_files; ++i) {
-    strcpy(name, "fd");
+    strcpy(name, filename);
     if (i == 1)
-        strcat(name, "1");
+        strcat(name, "(1)");
     if (i == 2)
-        strcat(name, "2");
+        strcat(name, "(2)");
    if ((childpid = fork()) <= 0)
       break;
   }
   
   // have something to do
-  srand(time(NULL) * i);
-  sleep(rand() % (2 * num_files));
-
   // parent waits for all the children
   if (childpid != 0) {
 
@@ -94,13 +90,21 @@ int split(int fd, char* filename) {
       fprintf(stderr, "Child %ld is done\n", (long)nchildpid);
     }
   } else {
+
+    //Create file here:
   #ifdef DEBUG
-    fprintf(stderr, "Filename %s", name);
+    fprintf(stderr, "Filename %s\n", name);
   #endif
-  
+
+  int outfd = open(name, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
+  #ifdef DEBUG
+    fprintf(stderr, "File descriptor: %d\n", outfd);
+  #endif
     fprintf(stderr, "i:%d Name: %s Processing: process ID: %ld  parent ID: %ld  child ID: %ld\n",
 	  i, name, (long) getpid(), (long) getppid(), (long) childpid);
 
+  }
   free(name);
   
   return 0;
