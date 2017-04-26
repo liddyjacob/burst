@@ -12,6 +12,10 @@
   jpl61@zips.uakron.edu
 */
 
+//Dependancy *HELL*
+//Do you believe in our lord and savior, LINUS TORVALDS?
+#include <archive.h> //libarchive - 
+#include <archive_entry.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -45,15 +49,13 @@ int read_process(const char* filepath, int linesperfile){
   }
 
 
-  /*TODO Fix this **nasty** hack to get the line number of lines
-  a file */
   //Process the file - split into pieces
-  int returnValue = split(infd, filepath);
+  int errno = split(infd, filepath);
 
   //Close and finish read_process.
   close(infd);
   
-  return returnValue;
+  return errno;
 }
 
 
