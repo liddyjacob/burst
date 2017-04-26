@@ -12,13 +12,13 @@
   jpl61@zips.uakron.edu
 */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <stdlib.h> //system
 #include <string.h>
-#include <sys/wait.h>
-#include <errno.h>
+#include <time.h>
+#include <errno.h> //For fileno? 
 #include <fcntl.h>
 #include <sys/stat.h> //S_IRUSR
 /*Prototype for process: */
@@ -57,10 +57,35 @@ int read_process(const char* filepath, int linesperfile){
 //Get rid of argv and argv, change to files.
 //fd - file descriptor | lines_splitFs - lines per split file
 //lines_F - lines in original file.
+struct threaddata_t {
+    int id; // id
+    int status; // status
+    pthread_t tid; // thread id
+};
+
+
 int split(int fd, const char* filename) {
+  //One thread for each file
+  int numfiles = 2;
+
+
+  if (numfiles < 0) {
+    fprintf(stderr, "Less than 1 file attempted");
+    return 1;
+  }
+
+  //Allocate memory for thread info - deal with 2 files for now:
+  struct threaddata_t* threadinfo = calloc(numfiles, sizeof(struct threaddata_t));
+
+  if (!threadinfo) {
+    fprintf(stderr, "Unable to allocate thread info\n");
+    return 1;
+  }
 
   /* A file will be created for each split */     
   int num_files = 2;
+
+    
 
 
   return 0;

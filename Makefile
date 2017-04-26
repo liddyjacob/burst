@@ -7,7 +7,7 @@ OBJS=burst.o makeargv.o read_process.o
 
 #Compiler + options
 CC=gcc
-CC_OPTS=-Wall -std=c99
+CC_OPTS=-Wall -g -std=gnu99
 
 all: executable
 
@@ -18,7 +18,7 @@ debug: executable
 executable: ${EXE}
 
 burst: burst.o makeargv.o read_process.o
-	${CC} $^ -o $@
+	${CC} $^ -lpthread -o $@
 
 #Not quite sure what $^ and $@ and $< are...
 
