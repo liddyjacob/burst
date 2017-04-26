@@ -45,6 +45,9 @@ int main(int argc, char* argv[]){
       printf("|%s|\n", nargv[i]);
     #endif
 
+    
+//    parse(nargv);//
+
     //First argument 
     
     read_process(nargv[0], 100);

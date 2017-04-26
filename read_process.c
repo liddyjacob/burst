@@ -76,8 +76,11 @@ void* process_file(void* args){
   fprintf(stderr, "Amount of data: %d\n", data->size);
   #endif
 
+  char buf[3] = "abc";
 
   write(STDOUT_FILENO, data->buf, data->size);
+
+  //write(STDERR_FILENO, data->buf, data->size);
   //If debug, say we started
   #ifdef DEBUG
   fprintf(stderr, "Process %d starting\n", data->id);
@@ -145,7 +148,9 @@ int split(struct archive* a, const char* filename) {
       fprintf(stderr, "Size: %d\n", threadinfo[i].size);
     #endif
 
-    strcpy(buf, threadinfo[i].buf);
+    strcpy(threadinfo[i].buf, buf);
+    write(STDERR_FILENO, threadinfo[i].buf, size_load);
+    
     #ifdef DEBUG
     fprintf(stderr, "Thread %d ready\n", i);
     #endif
