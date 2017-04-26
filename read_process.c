@@ -2,7 +2,7 @@
   read_process.c
 
   process:
-  Fan-structured processes that handles the splitting of 
+  thread-structured processes that handles the splitting of 
     the burst file.
 
   read_process: Open the burst file for read, then process.
@@ -21,6 +21,10 @@
 #include <errno.h> //For fileno? 
 #include <fcntl.h>
 #include <sys/stat.h> //S_IRUSR
+
+//Take in 512 bytes at a time
+#define BLKSIZE 512
+
 /*Prototype for process: */
 int split(int, const char*);
 
@@ -60,8 +64,33 @@ int read_process(const char* filepath, int linesperfile){
 struct threaddata_t {
     int id; // id
     int status; // status
+    char buf[BLKSIZE]; //Buncha data from a file 
     pthread_t tid; // thread id
 };
+
+void* process_file(void* args){
+
+  //Unpack arguments to data
+  struct threaddata_t* data = args;
+
+  //If debug, say we started
+  #ifdef DEBUG
+  fprintf(stderr, "Process %d starting\n", data->id);
+  #endif
+
+  //Process - Filestuff here
+  srand(time(NULL) * data->id);
+  sleep(rand() % 4); // Up to 4 seconds of sleep.
+
+  fprintf(stderr, "Process %d ending\n", data->id);
+  
+  return &(data->status);
+}
+
+
+
+
+
 
 
 int split(int fd, const char* filename) {
@@ -74,6 +103,7 @@ int split(int fd, const char* filename) {
     return 1;
   }
 
+  //Array of threads
   //Allocate memory for thread info - deal with 2 files for now:
   struct threaddata_t* threadinfo = calloc(numfiles, sizeof(struct threaddata_t));
 
@@ -82,10 +112,30 @@ int split(int fd, const char* filename) {
     return 1;
   }
 
-  /* A file will be created for each split */     
-  int num_files = 2;
+  //Create a thread for each file:
 
+  for (int i = 0; i < numfiles; ++i){
+    threadinfo[i].id = i;
+
+    //Here is where the thread branches off to do some work:
+    pthread_create(&threadinfo[i].tid, NULL, process_file, &threadinfo);
+  }
+
+  for (int i = 0; i < numfiles; ++i){
+
+    #ifdef DEBUG
+    fprintf(stderr, "read() %d waiting\n", threadinfo[i].id);
+    #endif
     
+    pthread_join(threadinfo[i].tid, NULL);
+
+    #ifdef DEBUG
+    fprintf(stderr, "read() %d finished\n", threadinfo[i].id);
+    #endif
+  }
+
+  //Free threadinfo array memory
+  free(threadinfo);   
 
 
   return 0;
