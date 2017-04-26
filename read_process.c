@@ -59,55 +59,9 @@ int read_process(const char* filepath, int linesperfile){
 //lines_F - lines in original file.
 int split(int fd, const char* filename) {
 
-  /* A file will be created for each split */
- 
-
-     
+  /* A file will be created for each split */     
   int num_files = 2;
 
-  // construct our fan - One for each file
-  pid_t childpid;
-  int i;
-  char* name = malloc(strlen(filename) + 3);
-  for (i = 1; i <= num_files; ++i) {
-    strcpy(name, filename);
-    if (i == 1)
-        strcat(name, "(1)");
-    if (i == 2)
-        strcat(name, "(2)");
-   if ((childpid = fork()) <= 0)
-      break;
-  }
-  
-  // have something to do
-  // parent waits for all the children
-  if (childpid != 0) {
 
-    pid_t nchildpid = 0;
-    while ((nchildpid = wait(NULL))) {
-      if (errno == ECHILD)
-	break;
-      #ifdef DEBUG
-      fprintf(stderr, "Child %ld is done\n", (long)nchildpid);
-      #endif
-    }
-  } else {
-
-    //Create file here:
-  #ifdef DEBUG
-    fprintf(stderr, "Filename %s\n", name);
-  #endif
-
-  int outfd = open(name, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-
-  #ifdef DEBUG
-    fprintf(stderr, "File descriptor: %d\n", outfd);
-    fprintf(stderr, "i:%d Name: %s Processing: process ID: %ld  parent ID: %ld  child ID: %ld\n",
-	  i, name, (long) getpid(), (long) getppid(), (long) childpid);
-  #endif
-
-  }
-  free(name);
-  
   return 0;
 }
