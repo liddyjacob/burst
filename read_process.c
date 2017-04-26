@@ -72,8 +72,12 @@ struct threaddata_t {
 void* process_file(void* args){
 
   struct threaddata_t* data = args;
+  #ifdef DEBUG
+  fprintf(stderr, "Amount of data: %d\n", data->size);
+  #endif
 
-    write(STDOUT_FILENO, data->buf, data->size);
+
+  write(STDOUT_FILENO, data->buf, data->size);
   //If debug, say we started
   #ifdef DEBUG
   fprintf(stderr, "Process %d starting\n", data->id);
@@ -127,6 +131,9 @@ int split(struct archive* a, const char* filename) {
   for (int i = 0; i < numfiles; ++i){
     threadinfo[i].id = i;
     int size_load = archive_read_data(a, buf, 512);
+    #ifdef DEBUG
+      fprintf(stderr, "Size load: %d\n", size_load);
+    #endif
     if (size_load < 0)
       return 1;
 
@@ -134,12 +141,16 @@ int split(struct archive* a, const char* filename) {
       break;
 
     threadinfo[i].size = size_load;
+    #ifdef DEBUG
+      fprintf(stderr, "Size: %d\n", threadinfo[i].size);
+    #endif
+
     strcpy(buf, threadinfo[i].buf);
     #ifdef DEBUG
     fprintf(stderr, "Thread %d ready\n", i);
     #endif
     //Here is where the thread branches off to do some work:
-    pthread_create(&threadinfo[i].tid, NULL, process_file, &threadinfo);
+    pthread_create(&threadinfo[i].tid, NULL, process_file, &threadinfo[i]);
   }
 
   for (int i = 0; i < numfiles; ++i){
