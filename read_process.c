@@ -56,10 +56,20 @@ int read_process(const char* filepath, int linesperfile){
 }
 
 
-//Assume file is 501 to 999 lines
-//Get rid of argv and argv, change to files.
-//fd - file descriptor | lines_splitFs - lines per split file
-//lines_F - lines in original file.
+/*
+  Assume file is so many bytes(for now)
+  TODO: FIX this. Allow different byte sizes.
+  TODO: CONVERT this. Specify lines, instead of byte size.
+  TODO: output files.
+  TODO: Add option to output an archive.
+
+*/
+
+/*
+  threaddata_t - the information needed to be 
+    passed in
+
+*/
 struct threaddata_t {
     int id; // id
     int status; // status
@@ -73,26 +83,25 @@ void* process_file(void* args){
 
   struct threaddata_t* data = args;
   #ifdef DEBUG
-  fprintf(stderr, "Amount of data: %d\n", data->size);
+    fprintf(stderr, "Amount of data: %d\n", data->size);
   #endif
 
   char buf[3] = "abc";
 
+  //Output this threads info, eventually to a unique file.
   write(STDOUT_FILENO, data->buf, data->size);
 
-  //write(STDERR_FILENO, data->buf, data->size);
-  //If debug, say we started
   #ifdef DEBUG
-  fprintf(stderr, "Process %d starting\n", data->id);
+    fprintf(stderr, "Process %d starting\n", data->id);
   #endif
 
   //Process - Filestuff here
   srand(time(NULL) * data->id);
-  sleep(rand() % 4); // Up to 4 seconds of sleep.
+  sleep(rand() % 4); // Up to 4 seconds of sleep. For testing.
 
   fprintf(stderr, "Process %d ending\n", data->id);
   
-  return &(data->status);
+  return &(data->status); //Did the thread finish?
 }
 
 
@@ -109,28 +118,14 @@ int split(struct archive* a, const char* filename) {
     fprintf(stderr, "Unable to allocate thread info\n");
     return 1;
   }
-  //Temporary - to examine how libarchive works.
+  //Set up archive:
   struct archive_entry* entry;
   archive_read_next_header(a, &entry);
 
-  // output the data
+  //The buffer of data for each thread, to be filled
   char buf[512];
-/*  for (;;) {
-    int size = archive_read_data(a, buf, 512);
-    if (size < 0)
-      return 1;
-
-    // EOF
-    if (size == 0)
-      break;
-
-    //numfiles++;
-
-
-  } */
 
   //Create a thread for each file:
-
   for (int i = 0; i < numfiles; ++i){
     threadinfo[i].id = i;
     int size_load = archive_read_data(a, buf, 512);
