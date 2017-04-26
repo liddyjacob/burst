@@ -18,7 +18,7 @@ debug: executable
 executable: ${EXE}
 
 burst: burst.o makeargv.o read_process.o
-	${CC} $^ -lpthread -o $@
+	${CC} $^ -larchive -lpthread -o $@
 
 #Not quite sure what $^ and $@ and $< are...
 

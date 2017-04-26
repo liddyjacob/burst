@@ -30,32 +30,29 @@
 #define BLKSIZE 512
 
 /*Prototype for process: */
-int split(int, const char*);
+int split(struct archive* a, const char*);
 
 
 //TODO add options for argument to process.
 int read_process(const char* filepath, int linesperfile){
-  /*Infile file descriptor*/
-  
-  int infd = open(filepath, O_RDONLY);
-  #ifdef DEBUG
-    fprintf(stderr, "Filedescriptor: %d\n", infd); 
-  #endif
 
-  /* Handle bad file descriptors: */
-  if (infd < 0){
-    fprintf(stderr, "Could not open %s\n", filepath);
-    return -1;
-  }
 
+  //Setup many archive types to be opened
+  struct archive* a = archive_read_new();
+  archive_read_support_filter_all(a);
+  archive_read_support_format_raw(a);
+
+  //Open archive:
+  archive_read_open_filename(a, filepath, 10240);
 
   //Process the file - split into pieces
-  int errno = split(infd, filepath);
+  int err = split(a, filepath);
 
   //Close and finish read_process.
-  close(infd);
+  archive_read_close(a);
+
   
-  return errno;
+  return err;
 }
 
 
@@ -66,15 +63,17 @@ int read_process(const char* filepath, int linesperfile){
 struct threaddata_t {
     int id; // id
     int status; // status
+
     char buf[BLKSIZE]; //Buncha data from a file 
+    int size; //Amount of stuff
     pthread_t tid; // thread id
 };
 
 void* process_file(void* args){
 
-  //Unpack arguments to data
   struct threaddata_t* data = args;
 
+    write(STDOUT_FILENO, data->buf, data->size);
   //If debug, say we started
   #ifdef DEBUG
   fprintf(stderr, "Process %d starting\n", data->id);
@@ -90,21 +89,11 @@ void* process_file(void* args){
 }
 
 
+int split(struct archive* a, const char* filename) {
+  
+  int numfiles = 2;  
 
-
-
-
-
-int split(int fd, const char* filename) {
   //One thread for each file
-  int numfiles = 2;
-
-
-  if (numfiles < 0) {
-    fprintf(stderr, "Less than 1 file attempted");
-    return 1;
-  }
-
   //Array of threads
   //Allocate memory for thread info - deal with 2 files for now:
   struct threaddata_t* threadinfo = calloc(numfiles, sizeof(struct threaddata_t));
@@ -113,12 +102,42 @@ int split(int fd, const char* filename) {
     fprintf(stderr, "Unable to allocate thread info\n");
     return 1;
   }
+  //Temporary - to examine how libarchive works.
+  struct archive_entry* entry;
+  archive_read_next_header(a, &entry);
+
+  // output the data
+  char buf[512];
+/*  for (;;) {
+    int size = archive_read_data(a, buf, 512);
+    if (size < 0)
+      return 1;
+
+    // EOF
+    if (size == 0)
+      break;
+
+    //numfiles++;
+
+
+  } */
 
   //Create a thread for each file:
 
   for (int i = 0; i < numfiles; ++i){
     threadinfo[i].id = i;
+    int size_load = archive_read_data(a, buf, 512);
+    if (size_load < 0)
+      return 1;
 
+    if (size_load == 0)
+      break;
+
+    threadinfo[i].size = size_load;
+    strcpy(buf, threadinfo[i].buf);
+    #ifdef DEBUG
+    fprintf(stderr, "Thread %d ready\n", i);
+    #endif
     //Here is where the thread branches off to do some work:
     pthread_create(&threadinfo[i].tid, NULL, process_file, &threadinfo);
   }

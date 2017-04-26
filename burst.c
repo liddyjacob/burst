@@ -30,6 +30,8 @@
 #include <stdio.h> //printf
 #endif
 
+
+//TODO: THIS is really messy - fix it.
 int main(int argc, char* argv[]){
     /* First do error handling, input processing*/
 
