@@ -77,6 +77,7 @@ struct threaddata_t {
     char buf[BLKSIZE]; //Buncha data from a file 
     int size; //Amount of stuff
     pthread_t tid; // thread id
+    struct threaddata_t* pnxt_thread;
 };
 
 void* process_file(void* args){
@@ -107,17 +108,13 @@ void* process_file(void* args){
 
 int split(struct archive* a, const char* filename) {
   
-  int numfiles = 2;  
+//  int numfiles = 2;  
 
   //One thread for each file
-  //Array of threads
-  //Allocate memory for thread info - deal with 2 files for now:
-  struct threaddata_t* threadinfo = calloc(numfiles, sizeof(struct threaddata_t));
+  //Linked list of threads
+  //create head of linked list:
+  struct threaddata_t* head_thread = NULL;//malloc(sizeof(struct threaddata_t));
 
-  if (!threadinfo) {
-    fprintf(stderr, "Unable to allocate thread info\n");
-    return 1;
-  }
   //Set up archive:
   struct archive_entry* entry;
   archive_read_next_header(a, &entry);
@@ -125,49 +122,85 @@ int split(struct archive* a, const char* filename) {
   //The buffer of data for each thread, to be filled
   char buf[512];
 
+//  struct threaddata_t* next_thread = head_thread;
+
+    int size_load = 1;
+
+  int numfiles = 0;
+
   //Create a thread for each file:
-  for (int i = 0; i < numfiles; ++i){
-    threadinfo[i].id = i;
+  //Loop until as many files are created as needed:
+  struct threaddata_t* next_thread = head_thread;
+  while (1){
     int size_load = archive_read_data(a, buf, 512);
+
     #ifdef DEBUG
       fprintf(stderr, "Size load: %d\n", size_load);
     #endif
+
     if (size_load < 0)
       return 1;
-
     if (size_load == 0)
       break;
 
-    threadinfo[i].size = size_load;
+
+    //Create thread after there is data to be put in:
+    next_thread = malloc(sizeof(struct threaddata_t));
+    if (!next_thread) {
+      fprintf(stderr, "Unable to allocate thread info\n");
+      return 1;
+    } 
+
+    next_thread->id = numfiles;
+    next_thread->size = size_load;
+
+
     #ifdef DEBUG
-      fprintf(stderr, "Size: %d\n", threadinfo[i].size);
+      fprintf(stderr, "Size: %d\n", next_thread->size);
     #endif
 
-    strcpy(threadinfo[i].buf, buf);
-    write(STDERR_FILENO, threadinfo[i].buf, size_load);
+    strcpy(next_thread->buf, buf);
     
     #ifdef DEBUG
-    fprintf(stderr, "Thread %d ready\n", i);
+    fprintf(stderr, "Thread %d ready\n", numfiles);
     #endif
+
     //Here is where the thread branches off to do some work:
-    pthread_create(&threadinfo[i].tid, NULL, process_file, &threadinfo[i]);
+    pthread_create(&next_thread->tid, NULL, process_file, next_thread);
+    
+    next_thread = next_thread->pnxt_thread;
+    next_thread = NULL;
+    numfiles++;
   }
+
+  #ifdef DEBUG
+  fprintf(stderr, "Out of loop. Files: %d\n", numfiles);
+  #endif
+
+  struct threaddata_t* curr_thread = head_thread;
+
+  #ifdef DEBUG
+  printf(stderr, "next thread = head thread\n");
+  #endif
 
   for (int i = 0; i < numfiles; ++i){
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d waiting\n", threadinfo[i].id);
+    fprintf(stderr, "read() %d waiting\n", next_thread->id);
     #endif
     
-    pthread_join(threadinfo[i].tid, NULL);
+    pthread_join(next_thread->tid, NULL);
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d finished\n", threadinfo[i].id);
+    fprintf(stderr, "read() %d finished\n", next_thread->id);
     #endif
+    next_thread = next_thread->pnxt_thread;
   }
 
+
+
   //Free threadinfo array memory
-  free(threadinfo);   
+  //free(threadinfo);   
 
 
   return 0;
