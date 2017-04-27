@@ -127,8 +127,6 @@ int split(struct archive* a, const char* filename) {
   int size_load = 1;
   int numfiles = 0;
 
-
-  //TODO : Allocate as a stack
   //save=head_thread
   //head thread->malloc
   //head thread->pnext_thread = save 
@@ -173,20 +171,11 @@ int split(struct archive* a, const char* filename) {
     #endif
 
     //Here is where the thread branches off to do some work:
-    pthread_create(&head_thread->tid, NULL, process_file, head_thread);
-  
+    pthread_create(&head_thread->tid, NULL, process_file, head_thread);  
     numfiles++;
   }
 
-  #ifdef DEBUG
-  fprintf(stderr, "Out of loop. Files: %d\n", numfiles);
-  #endif
-
   struct threaddata_t* curr_thread = head_thread;
-
-  #ifdef DEBUG
-  printf(stderr, "next thread = head thread\n");
-  #endif
 
   for (int i = 0; i < numfiles; ++i){
 
@@ -201,6 +190,25 @@ int split(struct archive* a, const char* filename) {
     #endif
     curr_thread = curr_thread->pnxt_thread;
   }
+
+  //Go through every thread and delete it. Also - when dynamic buffers
+  //happen, make sure buffer is deleted too!
+
+  for (int i = 0; i < numfiles; i++){
+
+    #ifdef DEBUG
+    fprintf(stderr, "Deleting thread %d\n", i);
+    #endif
+    struct threaddata_t* save = head_thread->pnxt_thread;
+
+    free(head_thread);
+
+    head_thread = save;
+
+
+  }
+
+  curr_thread = head_thread;
 
 
 
