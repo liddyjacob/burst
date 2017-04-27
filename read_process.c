@@ -13,18 +13,19 @@
 */
 
 //Dependancy *HELL*
-//Do you believe in our lord and savior, LINUS TORVALDS?
+#include <math.h> // log
 #include <archive.h> //libarchive - 
 #include <archive_entry.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <string.h>
+#include <string.h>//strstr and others.
 #include <time.h>
 #include <errno.h> //For fileno? 
 #include <fcntl.h>
 #include <sys/stat.h> //S_IRUSR
+
 
 //Take in 512 bytes at a time
 #define BLKSIZE 512
@@ -70,10 +71,11 @@ int read_process(const char* filepath, int linesperfile){
     passed in
 
 */
-struct threaddata_t {
+struct threaddata_t{
     int id; // id
     int status; // status
 
+    int fd; //Filedescriptor - for writing data
     char buf[BLKSIZE]; //Buncha data from a file 
     int size; //Amount of stuff
     pthread_t tid; // thread id
@@ -96,19 +98,19 @@ void* process_file(void* args){
     fprintf(stderr, "Process %d starting\n", data->id);
   #endif
 
-  //Process - Filestuff here
-  srand(time(NULL) * data->id);
-  sleep(rand() % 4); // Up to 4 seconds of sleep. For testing.
-
   fprintf(stderr, "Process %d ending\n", data->id);
   
   return &(data->status); //Did the thread finish?
 }
 
 
+//void newname - make a file go from file.extension to file-index.
+
+void new_name(char* newname, char* oldname, int file_index);
+ 
 int split(struct archive* a, const char* filename) {
   
-//  int numfiles = 2;  
+  //  int numfiles = 2;  
 
   //One thread for each file
   //Linked list of threads
@@ -138,15 +140,10 @@ int split(struct archive* a, const char* filename) {
 
     int size_load = archive_read_data(a, buf, 512);
 
-    #ifdef DEBUG
-      fprintf(stderr, "Size load: %d\n", size_load);
-    #endif
-
     if (size_load < 0)
       return 1;
     if (size_load == 0)
       break;
-
 
     //Create thread after there is data to be put in:
     head_thread = malloc(sizeof(struct threaddata_t));
@@ -159,10 +156,26 @@ int split(struct archive* a, const char* filename) {
     head_thread->id = numfiles;
     head_thread->size = size_load;
 
+    //Create the name of the file
+    /*
+      file(index).ext
+      
+      index = numfiles + 1
+      malloc(sizeof(filename) + (int)log(numfiles + 1) + 1); 
+      Explination:
 
-    #ifdef DEBUG
-      fprintf(stderr, "Size: %d\n", head_thread->size);
-    #endif
+  sizeof(filename)       -- must reserve memory for sizeof(file.ext)
+  (int)log(numfiles+1)   -- must reserve memory for log(index) -- see table
+  +1                     -- must reserve memory for rounding down of ^
+       n 1 2 3 4 5 6 7 8 9 10
+intlog n 0 0 0 0 0 0 0 0 0 1
+
+    */
+    //Delete newfname when filedescriptor has been created-
+    char* newfname;
+    new_name(newfname, filename, index);
+
+    //Create file that 
 
     strcpy(head_thread->buf, buf);
     
@@ -204,17 +217,27 @@ int split(struct archive* a, const char* filename) {
     free(head_thread);
 
     head_thread = save;
-
-
   }
 
-  curr_thread = head_thread;
-
-
-
-  //Free threadinfo array memory
-  //free(threadinfo);   
+  curr_thread = head_thread; 
 
 
   return 0;
 }
+
+void new_name(char* newname, char* oldname, int file_index){
+    //const char lookfor = '.'; //Look for a .
+
+//      char* ret;
+//      ret = strstr(oldname, ".");
+      strcpy(oldname, strstr(oldname, "."));
+
+//   const char haystack[20] = "TutorialsPoint";
+//   const char needle[10] = "Point";
+//   char *ret;
+
+    
+
+}
+
+
