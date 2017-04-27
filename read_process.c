@@ -25,7 +25,7 @@
 #include <errno.h> //For fileno? 
 #include <fcntl.h>
 #include <sys/stat.h> //S_IRUSR
-
+#include <stdlib.h>
 
 //Take in 512 bytes at a time
 #define BLKSIZE 512
@@ -89,10 +89,8 @@ void* process_file(void* args){
     fprintf(stderr, "Amount of data: %d\n", data->size);
   #endif
 
-  char buf[3] = "abc";
-
-  //Output this threads info, eventually to a unique file.
-  write(STDOUT_FILENO, data->buf, data->size);
+  //Output this threads info to file descriptor it holds
+  write(data->fd, data->buf, data->size);
 
   #ifdef DEBUG
     fprintf(stderr, "Process %d starting\n", data->id);
@@ -126,7 +124,6 @@ int split(struct archive* a, const char* filename) {
 
   //  struct threaddata_t* next_thread = head_thread;
 
-  int size_load = 1;
   int numfiles = 0;
 
   //save=head_thread
@@ -172,10 +169,25 @@ intlog n 0 0 0 0 0 0 0 0 0 1
 
     */
     //Delete newfname when filedescriptor has been created-
-    char* newfname;
-    new_name(newfname, filename, index);
+    int filesize = (int)sizeof(filename) + (int)log(numfiles + 1) + 2;
+    char* newfname = malloc(filesize); 
+    new_name(newfname, filename, numfiles + 1);
+    
+    #ifdef DEBUG
+    fprintf(stderr, "New file name: %s", newfname);
+    #endif
 
-    //Create file that 
+    //Now open file based off name
+    int newfd = open(newfname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+    //Finally, pass this to the thread
+    
+    free(newfname);
+
+    if (newfd < 0){
+      fprintf(stderr, "New file %s could not be create\n", newfname);
+      return 1;
+    }
+    head_thread->fd = newfd; 
 
     strcpy(head_thread->buf, buf);
     
@@ -225,19 +237,26 @@ intlog n 0 0 0 0 0 0 0 0 0 1
   return 0;
 }
 
+
+
 void new_name(char* newname, char* oldname, int file_index){
     //const char lookfor = '.'; //Look for a .
 
 //      char* ret;
 //      ret = strstr(oldname, ".");
-      strcpy(oldname, strstr(oldname, "."));
+  int i=0;
+  while(*(oldname + i) != '.'){
+    newname[i] = oldname[i];
+    ++i;
+  }
 
-//   const char haystack[20] = "TutorialsPoint";
-//   const char needle[10] = "Point";
-//   char *ret;
-
-    
-
+  char* buffer = malloc(log(file_index) + 3);  
+  int n;
+  n = sprintf(buffer, "-%d", file_index);
+ 
+  strcat(newname, buffer);
+  strcat(newname, strstr(oldname, "."));
+  
+  free(buffer);
 }
-
 
