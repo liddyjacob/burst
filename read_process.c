@@ -122,16 +122,22 @@ int split(struct archive* a, const char* filename) {
   //The buffer of data for each thread, to be filled
   char buf[512];
 
-//  struct threaddata_t* next_thread = head_thread;
+  //  struct threaddata_t* next_thread = head_thread;
 
-    int size_load = 1;
-
+  int size_load = 1;
   int numfiles = 0;
 
+
+  //TODO : Allocate as a stack
+  //save=head_thread
+  //head thread->malloc
+  //head thread->pnext_thread = save 
   //Create a thread for each file:
   //Loop until as many files are created as needed:
-  struct threaddata_t* next_thread = head_thread;
   while (1){
+    
+    struct threaddata_t* save = head_thread;
+
     int size_load = archive_read_data(a, buf, 512);
 
     #ifdef DEBUG
@@ -145,31 +151,30 @@ int split(struct archive* a, const char* filename) {
 
 
     //Create thread after there is data to be put in:
-    next_thread = malloc(sizeof(struct threaddata_t));
-    if (!next_thread) {
+    head_thread = malloc(sizeof(struct threaddata_t));
+    head_thread->pnxt_thread = save;//Put in the next thread
+    if (!head_thread) {
       fprintf(stderr, "Unable to allocate thread info\n");
       return 1;
     } 
 
-    next_thread->id = numfiles;
-    next_thread->size = size_load;
+    head_thread->id = numfiles;
+    head_thread->size = size_load;
 
 
     #ifdef DEBUG
-      fprintf(stderr, "Size: %d\n", next_thread->size);
+      fprintf(stderr, "Size: %d\n", head_thread->size);
     #endif
 
-    strcpy(next_thread->buf, buf);
+    strcpy(head_thread->buf, buf);
     
     #ifdef DEBUG
     fprintf(stderr, "Thread %d ready\n", numfiles);
     #endif
 
     //Here is where the thread branches off to do some work:
-    pthread_create(&next_thread->tid, NULL, process_file, next_thread);
-    
-    next_thread = next_thread->pnxt_thread;
-    next_thread = NULL;
+    pthread_create(&head_thread->tid, NULL, process_file, head_thread);
+  
     numfiles++;
   }
 
@@ -186,15 +191,15 @@ int split(struct archive* a, const char* filename) {
   for (int i = 0; i < numfiles; ++i){
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d waiting\n", next_thread->id);
+    fprintf(stderr, "read() %d waiting\n", curr_thread->id);
     #endif
     
-    pthread_join(next_thread->tid, NULL);
+    pthread_join(curr_thread->tid, NULL);
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d finished\n", next_thread->id);
+    fprintf(stderr, "read() %d finished\n", curr_thread->id);
     #endif
-    next_thread = next_thread->pnxt_thread;
+    curr_thread = curr_thread->pnxt_thread;
   }
 
 
