@@ -61,7 +61,6 @@ int read_process(const char* filepath, int linesperfile){
   Assume file is so many bytes(for now)
   TODO: FIX this. Allow different byte sizes.
   TODO: CONVERT this. Specify lines, instead of byte size.
-  TODO: output files.
   TODO: Add option to output an archive.
 
 */
@@ -219,11 +218,16 @@ intlog n 0 0 0 0 0 0 0 0 0 1
   //Go through every thread and delete it. Also - when dynamic buffers
   //happen, make sure buffer is deleted too!
 
+
+  //TODO: Close the damn files.
   for (int i = 0; i < numfiles; i++){
 
     #ifdef DEBUG
     fprintf(stderr, "Deleting thread %d\n", i);
     #endif
+    if (close(head_thread->fd) == -1)
+      fprintf(stderr, "Filedescriptor %d could not close\n", head_thread->fd);
+
     struct threaddata_t* save = head_thread->pnxt_thread;
 
     free(head_thread);
