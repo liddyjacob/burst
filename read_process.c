@@ -77,7 +77,6 @@ int read_process(const char* filepath, int linesperfile){
 
 struct buf_node {
   char buf[501];
-  int bufsize;
   struct buf_node * pnxt_buf;
 };
 
@@ -150,16 +149,16 @@ int split(struct archive* a, const char* filename,int linesperfile) {
 
     //Try to achive correct number of lines
     int lines = 0;
+
     int size_load;
     
     //A linked list of buffers:
     struct buf_node* buf_head = NULL;    
-    //Total size of all buffers combined:
-    int total_size = 0;
     //Loop to take in data until correct number of lines is achived --     
-    int linkedbuf_pos = 0;
     while (1){
-            //Read data:
+      struct buf_node* save = buf_head;
+
+      //Read data:
       size_load = archive_read_data(a, buf, 501);
       
       //Error?
@@ -170,47 +169,19 @@ int split(struct archive* a, const char* filename,int linesperfile) {
         break;
 
       //Stop buf_pos at line number:
-      
-      for(buf_pos; (lines == linesperfile) || (buf == 501) || (linkedbuf_pos == 501); buf_pos++){        
+      for(buf_pos; (lines == linesperfile) || (buf == 501); buf_pos++){
         if (buf[buf_pos] == '\n')
-          ++linesperfile;
-        save->buf[linkedbuf_pos] = buf[buf_pos];
+          linesperfile++;
       }
       //Check why the loop stopped:
       if (linesperfile == lines){
-          //Create new buffer in linked list:
-          //May not have a full buffer in:
-          struct buf_node* save = buf_head;
-          buf_head = malloc(sizeof(struct buf_node));
-          buf_head->bufsize = linkedbuf_pos;
-          buf_head->pnxt_buf = save;
-          strcpy(buf_head->buf, buf);
-        
-          total_size = total_size + linkedbuf_pos;
-          break;
-      } else if (linkedbuf_pos == 501){
-          //Create new buffer in linked list:
-          struct buf_node* save = buf_head;
-          buf_head = malloc(sizeof(struct buf_node));
-          buf_head->bufsize = 501;
-          buf_head->pnxt_buf = save;
-          strcpy(buf_head->buf, buf);
-        
-          total_size = total_size + 501;
-          //Reset linkedbuf_pos:
-          linkedbuf_pos = 0;
-      } else if (buf = 501)
-          struct buf_node* save = buf_head;
-          buf_head = malloc(sizeof(struct buf_node));
-          buf_head->bufsize = linkedbuf_pos;
-          buf_head->pnxt_buf = save;
-          strcpy(buf_head->buf, buf);
-        
-          total_size = total_size + linkedbuf_pos;
- 
+
+
+      }
+
     }
 
-    if (total_size == 0)
+    if (size_load == 0)
       break;
 
     //Create thread after there is data to be put in:
