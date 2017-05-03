@@ -49,7 +49,7 @@ int main(int argc, char* argv[]){
 //    parse(nargv);//
 
     //First argument 
-    //500 default of lines per file:
+    
     read_process(nargv[0], 100);
     
 

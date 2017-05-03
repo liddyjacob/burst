@@ -31,7 +31,7 @@
 #define BLKSIZE 512
 
 /*Prototype for process: */
-int split(struct archive* a, const char*, int linesperfile);
+int split(struct archive* a, const char*);
 
 
 //TODO add options for argument to process.
@@ -47,7 +47,7 @@ int read_process(const char* filepath, int linesperfile){
   archive_read_open_filename(a, filepath, 10240);
 
   //Process the file - split into pieces
-  int err = split(a, filepath, linesperfile);
+  int err = split(a, filepath);
 
   //Close and finish read_process.
   archive_read_close(a);
@@ -70,23 +70,13 @@ int read_process(const char* filepath, int linesperfile){
     passed in
 
 */
-/*
-  buf_node - a linked list of buffers for getting 
-  desired amount of lines.
-*/
-
-struct buf_node {
-  char buf[501];
-  struct buf_node * pnxt_buf;
-};
-
 struct threaddata_t{
     int id; // id
     int status; // status
 
     int fd; //Filedescriptor - for writing data
-    char* buf; //Buncha data from a file 
-    int size; //Amount of stuff in buff
+    char buf[BLKSIZE]; //Buncha data from a file 
+    int size; //Amount of stuff
     pthread_t tid; // thread id
     struct threaddata_t* pnxt_thread;
 };
@@ -115,7 +105,7 @@ void* process_file(void* args){
 
 void new_name(char* newname, char* oldname, int file_index);
  
-int split(struct archive* a, const char* filename,int linesperfile) {
+int split(struct archive* a, const char* filename) {
   
   //  int numfiles = 2;  
 
@@ -129,8 +119,7 @@ int split(struct archive* a, const char* filename,int linesperfile) {
   archive_read_next_header(a, &entry);
 
   //The buffer of data for each thread, to be filled
-  char buf[501];
-  int buf_pos = 0;
+  char buf[512];
 
   //  struct threaddata_t* next_thread = head_thread;
 
@@ -141,46 +130,14 @@ int split(struct archive* a, const char* filename,int linesperfile) {
   //head thread->pnext_thread = save 
   //Create a thread for each file:
   //Loop until as many files are created as needed:
-
-  //Leftover from last file - keep track of it!
   while (1){
     
     struct threaddata_t* save = head_thread;
 
-    //Try to achive correct number of lines
-    int lines = 0;
+    int size_load = archive_read_data(a, buf, 512);
 
-    int size_load;
-    
-    //A linked list of buffers:
-    struct buf_node* buf_head = NULL;    
-    //Loop to take in data until correct number of lines is achived --     
-    while (1){
-      struct buf_node* save = buf_head;
-
-      //Read data:
-      size_load = archive_read_data(a, buf, 501);
-      
-      //Error?
-      if (size_load < 0)
-        return 1;
-      //EOF:
-      if (size_load == 0)
-        break;
-
-      //Stop buf_pos at line number:
-      for(buf_pos; (lines == linesperfile) || (buf == 501); buf_pos++){
-        if (buf[buf_pos] == '\n')
-          linesperfile++;
-      }
-      //Check why the loop stopped:
-      if (linesperfile == lines){
-
-
-      }
-
-    }
-
+    if (size_load < 0)
+      return 1;
     if (size_load == 0)
       break;
 
@@ -238,8 +195,8 @@ intlog n 0 0 0 0 0 0 0 0 0 1
     #endif
 
     //Here is where the thread branches off to do some work:
-    numfiles++;
     pthread_create(&head_thread->tid, NULL, process_file, head_thread);  
+    numfiles++;
   }
 
   struct threaddata_t* curr_thread = head_thread;
@@ -278,7 +235,7 @@ intlog n 0 0 0 0 0 0 0 0 0 1
     head_thread = save;
   }
 
-  //curr_thread = head_thread; 
+  curr_thread = head_thread; 
 
 
   return 0;
