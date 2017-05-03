@@ -50,7 +50,7 @@ int main(int argc, char* argv[]){
 
     //First argument 
     
-    read_process(nargv[0], 100);
+    read_process(nargv[0], 50);
     
 
     /* Then create files, and use fork to split into different processes */

@@ -143,8 +143,6 @@ int split(struct archive* a, const char* filename, int linesperfile) {
   int numblocks = 0;
   //Preload buffers into linkedlist of buffers:
   while(1){
-    struct bufnode* save = head_buf;
-
     int size_load = archive_read_data(a, buf, 512);
 
     if (size_load < 0)
@@ -152,16 +150,28 @@ int split(struct archive* a, const char* filename, int linesperfile) {
     if (size_load == 0)
       break;
 
+    struct bufnode* save = head_buf;
+
     #ifdef DEBUG
-    fprintf(stderr, "Block: %s\n", buf);
+    fprintf(stderr, "Block number: %d\nSize of load: %d\n\n", numblocks, size_load);
     #endif
 
     head_buf = malloc(sizeof(struct bufnode));
     head_buf->next = save;
+
+    //                ||                                            /\
+    //WHY THE HELL IS \/ NOT SAVING TO SIZE LOAD                    || 
     head_buf->size = size_load;
     strcpy(head_buf->buf, buf);
     ++numblocks;
   }
+
+  #ifdef DEBUG
+  fprintf(stderr, "Head size: %d\n", head_buf->size);
+
+  fprintf(stderr, "Head: %s\nNext: %s\n", strndup(head_buf->buf, 280), head_buf->next->buf);
+
+  #endif
 
   int bufindex = 0;
   int numlines = 0;
@@ -176,49 +186,71 @@ int split(struct archive* a, const char* filename, int linesperfile) {
   //Turn buffers into linked list of lines
   while(1){
     //newline
-    if (head_buf->buf[bufindex] == '\n'){
-      ++numlines;
-    }
+
     if (numlines == linesperfile){
       struct linenode* save = head_line;
       head_line = malloc(sizeof(struct linenode));
       head_line->size = sizeoflines; 
       head_line->buf = lineblock == NULL ? NULL : strndup(lineblock, sizeoflines);
-    
+      head_line->next = save;
+      #ifdef DEBUG
+      fprintf(stderr, "Block of line number: %d\nSize of block: %d\n\n", numfiles, sizeoflines);
+      #endif
       //reset variables
       sizeoflines = 0;
       numlines = 0;    
 
       //A new file must be created for this
-      numfiles++;
+      ++numfiles;
     }
     if (bufindex == this_loadsize){
       //Go to next node:
       struct bufnode* save = head_buf->next;
-      free(head_buf);
-      head_buf = save;
 
       if (save == NULL){ //Put last set of lines in
         
-        struct linenode* save = head_line;
+        struct linenode* save_l = head_line;
         head_line = malloc(sizeof(struct linenode));
         head_line->size = sizeoflines; 
         head_line->buf = lineblock == NULL ? NULL : strndup(lineblock, sizeoflines);        
+        head_line->next = save_l;
+      #ifdef DEBUG
+      fprintf(stderr, "Block of line number: %d\nSize of block: %d\n\n", numfiles, sizeoflines);
+      #endif
 
+        free(head_buf);
+        head_buf = save;
+        ++numfiles;
 
         break;
-      }
+      } 
+      //Otherwise:
+      free(head_buf);
+      head_buf = save;
+
+
+
 
       //reset variables
       bufindex = 0;
       this_loadsize == head_buf->size;
-
-
     }
+
+    //Now push 
+    lineblock[sizeoflines] = head_buf->buf[bufindex];
+    if (head_buf->buf[bufindex] == '\n'){
+      ++numlines;
+    }
+    ++sizeoflines;
+    ++bufindex;
 
   }
   free(lineblock);
 
+
+  #ifdef DEBUG
+  fprintf(stderr, "out of loop 2\n");
+  #endif
 
 
   //save=head_thread
