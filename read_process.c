@@ -29,9 +29,10 @@
 
 //Take in 512 bytes at a time
 #define BLKSIZE 512
+#define MAX_LINESIZE 5122
 
 /*Prototype for process: */
-int split(struct archive* a, const char*);
+int split(struct archive* a, const char*, int);
 
 
 //TODO add options for argument to process.
@@ -47,7 +48,7 @@ int read_process(const char* filepath, int linesperfile){
   archive_read_open_filename(a, filepath, 10240);
 
   //Process the file - split into pieces
-  int err = split(a, filepath);
+  int err = split(a, filepath, linesperfile);
 
   //Close and finish read_process.
   archive_read_close(a);
@@ -100,12 +101,25 @@ void* process_file(void* args){
   return &(data->status); //Did the thread finish?
 }
 
+struct bufnode{
+  char buf[BLKSIZE];
+  int size;
+  struct bufnode* next;
+};
+
+//Like bufnode, but any amount of lines:
+struct linenode{
+  char* buf;
+  int size;
+  struct linenode* next;
+};
 
 //void newname - make a file go from file.extension to file-index.
 
 void new_name(char* newname, char* oldname, int file_index);
+
  
-int split(struct archive* a, const char* filename) {
+int split(struct archive* a, const char* filename, int linesperfile) {
   
   //  int numfiles = 2;  
 
@@ -124,6 +138,88 @@ int split(struct archive* a, const char* filename) {
   //  struct threaddata_t* next_thread = head_thread;
 
   int numfiles = 0;
+
+  struct bufnode* head_buf = NULL;
+  int numblocks = 0;
+  //Preload buffers into linkedlist of buffers:
+  while(1){
+    struct bufnode* save = head_buf;
+
+    int size_load = archive_read_data(a, buf, 512);
+
+    if (size_load < 0)
+      return 1;
+    if (size_load == 0)
+      break;
+
+    #ifdef DEBUG
+    fprintf(stderr, "Block: %s\n", buf);
+    #endif
+
+    head_buf = malloc(sizeof(struct bufnode));
+    head_buf->next = save;
+    head_buf->size = size_load;
+    strcpy(head_buf->buf, buf);
+    ++numblocks;
+  }
+
+  int bufindex = 0;
+  int numlines = 0;
+  int sizeoflines = 0;
+
+  int this_loadsize = head_buf->size;
+
+  char* lineblock = malloc(linesperfile * MAX_LINESIZE);
+
+  struct linenode* head_line = NULL;
+
+  //Turn buffers into linked list of lines
+  while(1){
+    //newline
+    if (head_buf->buf[bufindex] == '\n'){
+      ++numlines;
+    }
+    if (numlines == linesperfile){
+      struct linenode* save = head_line;
+      head_line = malloc(sizeof(struct linenode));
+      head_line->size = sizeoflines; 
+      head_line->buf = lineblock == NULL ? NULL : strndup(lineblock, sizeoflines);
+    
+      //reset variables
+      sizeoflines = 0;
+      numlines = 0;    
+
+      //A new file must be created for this
+      numfiles++;
+    }
+    if (bufindex == this_loadsize){
+      //Go to next node:
+      struct bufnode* save = head_buf->next;
+      free(head_buf);
+      head_buf = save;
+
+      if (save == NULL){ //Put last set of lines in
+        
+        struct linenode* save = head_line;
+        head_line = malloc(sizeof(struct linenode));
+        head_line->size = sizeoflines; 
+        head_line->buf = lineblock == NULL ? NULL : strndup(lineblock, sizeoflines);        
+
+
+        break;
+      }
+
+      //reset variables
+      bufindex = 0;
+      this_loadsize == head_buf->size;
+
+
+    }
+
+  }
+  free(lineblock);
+
+
 
   //save=head_thread
   //head thread->malloc
@@ -263,4 +359,5 @@ void new_name(char* newname, char* oldname, int file_index){
   
   free(buffer);
 }
+
 
