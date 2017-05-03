@@ -233,7 +233,7 @@ int split(struct archive* a, const char* filename, int linesperfile) {
 
       //reset variables
       bufindex = 0;
-      this_loadsize == head_buf->size;
+      this_loadsize = head_buf->size;
     }
 
     //Now push 
