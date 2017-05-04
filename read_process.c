@@ -76,7 +76,7 @@ struct threaddata_t{
     int status; // status
 
     int fd; //Filedescriptor - for writing data
-    char buf[BLKSIZE]; //Buncha data from a file 
+    char* buf; //Buncha data from a file 
     int size; //Amount of stuff
     pthread_t tid; // thread id
     struct threaddata_t* pnxt_thread;
@@ -252,7 +252,7 @@ int split(struct archive* a, const char* filename, int linesperfile) {
   fprintf(stderr, "out of loop 2\n");
   #endif
 
-
+int fileno = 0;
   //save=head_thread
   //head thread->malloc
   //head thread->pnext_thread = save 
@@ -261,13 +261,7 @@ int split(struct archive* a, const char* filename, int linesperfile) {
   while (1){
     
     struct threaddata_t* save = head_thread;
-
-    int size_load = archive_read_data(a, buf, 512);
-
-    if (size_load < 0)
-      return 1;
-    if (size_load == 0)
-      break;
+    struct linenode* save_l = head_line->next;
 
     //Create thread after there is data to be put in:
     head_thread = malloc(sizeof(struct threaddata_t));
@@ -275,10 +269,11 @@ int split(struct archive* a, const char* filename, int linesperfile) {
     if (!head_thread) {
       fprintf(stderr, "Unable to allocate thread info\n");
       return 1;
-    } 
-
-    head_thread->id = numfiles;
-    head_thread->size = size_load;
+    }
+ 
+    head_thread->buf = strndup(head_line->buf, head_line->size); 
+    head_thread->id = fileno;
+    head_thread->size = head_line->size;
 
     //Create the name of the file
     /*
@@ -296,10 +291,11 @@ intlog n 0 0 0 0 0 0 0 0 0 1
 
     */
     //Delete newfname when filedescriptor has been created-
-    int filesize = (int)sizeof(filename) + (int)log(numfiles + 1) + 2;
+    int filesize = (int)sizeof(filename) + (int)log(fileno + 1) + 2;
     char* newfname = malloc(filesize); 
-    new_name(newfname, filename, numfiles + 1);
+    new_name(newfname, filename, fileno + 1);
     
+
     #ifdef DEBUG
     fprintf(stderr, "New file name: %s", newfname);
     #endif
@@ -316,15 +312,23 @@ intlog n 0 0 0 0 0 0 0 0 0 1
     }
     head_thread->fd = newfd; 
 
-    strcpy(head_thread->buf, buf);
-    
     #ifdef DEBUG
-    fprintf(stderr, "Thread %d ready\n", numfiles);
+    fprintf(stderr, "Thread %d ready\n", fileno);
     #endif
 
     //Here is where the thread branches off to do some work:
     pthread_create(&head_thread->tid, NULL, process_file, head_thread);  
-    numfiles++;
+
+
+         fileno++;   
+    free(head_line);
+    head_line = save_l;
+
+
+    //all covered:
+    if (head_line == NULL)
+      break;
+    
   }
 
   struct threaddata_t* curr_thread = head_thread;
