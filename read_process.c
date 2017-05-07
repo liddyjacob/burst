@@ -31,7 +31,7 @@
 
 //Take in 512 bytes at a time
 #define BLKSIZE 512
-#define MAX_LINESIZE 5122
+#define MAX_LINESIZE 4096
 
 /*Prototype for process: */
 int split(struct archive* a, const char*, int, bool);
