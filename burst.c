@@ -45,10 +45,6 @@ int main(int argc, char* argv[]){
     #endif
 
 
-    //See what arguments we have:
-    printf("%s\n", nargv[1]);
-
-
     int lines = 500;
     bool verbose = false;
 
@@ -81,9 +77,10 @@ int main(int argc, char* argv[]){
 
     if (strcmp(nargv[2], "-l") == 0 ){
 
-        if (n_tokens == 3)
+        if (n_tokens == 3){
           fprintf(stderr, "Usage: -l (Number of lines)\n");
-
+          return 1;
+        }
         char* input = strdup(nargv[3]);
         printf("%s\n", input);
         int ln = strlen(input);

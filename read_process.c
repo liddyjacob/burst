@@ -34,11 +34,11 @@
 #define MAX_LINESIZE 5122
 
 /*Prototype for process: */
-int split(struct archive* a, const char*, int);
+int split(struct archive* a, const char*, int, bool);
 
 
 //TODO add options for argument to process.
-int read_process(const char* filepath, int linesperfile, bool verbos){
+int read_process(const char filepath[], int linesperfile, bool verbose){
 
 
   //Setup many archive types to be opened
@@ -46,13 +46,13 @@ int read_process(const char* filepath, int linesperfile, bool verbos){
   struct archive* a = archive_read_new();
   archive_read_support_filter_all(a);
   archive_read_support_format_raw(a);
-  if (verbos)
+  if (verbose)
     fprintf(stdout, "Archive opened.\n"); 
   //Open archive:
   archive_read_open_filename(a, filepath, 10240);
 
   //Process the file - split into pieces
-  int err = split(a, filepath, linesperfile);
+  int err = split(a, filepath, linesperfile, verbose);
 
   if (err != 0){
     fprintf(stderr, "An error ocurred in split()\n");
@@ -60,7 +60,7 @@ int read_process(const char* filepath, int linesperfile, bool verbos){
 
   //Close and finish read_process.
   archive_read_close(a);
-  if (verbos)
+  if (verbose)
     fprintf(stdout, "Archive closed.\n"); 
   return err;
 }
@@ -125,8 +125,26 @@ struct linenode{
 void new_name(char* newname, const char* oldname, int file_index);
 
  
-int split(struct archive* a, const char* filename, int linesperfile) {
-  //One thread for each file
+int split(struct archive* a, const char filename[], int linesperfile, bool verbose) {
+
+  char* original_name = strdup(filename);
+  char* extension;
+  extension = strpbrk(original_name, ".");
+  
+  char* dotpos;
+  dotpos = strchr(original_name, '.');
+  int dotindex;
+
+  if (dotpos == NULL){
+    dotindex = strlen(original_name);
+  } else {  
+    dotindex = (int)(dotpos - original_name);  
+  }
+
+  char* firstpart = malloc(dotindex);
+  strncpy(firstpart, original_name, dotindex);
+
+ //One thread for each file
   //Linked list of threads
   struct threaddata_t* head_thread = NULL;
 
@@ -317,23 +335,26 @@ int split(struct archive* a, const char* filename, int linesperfile) {
 intlog n 0 0 0 0 0 0 0 0 0 1
 
     */
-    //Delete newfname when filedescriptor has been created-
-    char newfname[4];// = alphabet[i];// = malloc(filesize); 
-  
-    sprintf(newfname, "%c.txt", alphabet[i]); 
+    //Delete fname when filedescriptor has been created-
+
+    char* fname = malloc(sizeof(original_name) + (int)log(numfiles - i) + 1);
+    sprintf(fname, "%s-%d%s", firstpart, numfiles - i, extension);
+
 
     #ifdef DEBUG
     fprintf(stderr, "New file name: %s", newfname);
     #endif
 
     //Now open file based off name
-    int newfd = open(newfname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+    int newfd = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     //Finally, pass this to the thread
     
+    free(fname);
+
 //    free(newfname);
 
     if (newfd < 0){
-      fprintf(stderr, "New file %s could not be create\n", newfname);
+      fprintf(stderr, "New file %s could not be create\n", fname);
       return 1;
     }
     threadarray[i].fd = newfd; 
@@ -346,10 +367,7 @@ intlog n 0 0 0 0 0 0 0 0 0 1
     free(head_line);
     head_line = save_l;
 
-    #ifdef DEBUG
-    fprintf(stderr, "Did the fucking linked list cause another fucking error?\n");
-    #endif
-    //Here is where the thread branches off to do some work:
+   //Here is where the thread branches off to do some work:
     pthread_create(&threadarray[i].tid, NULL, process_file, &threadarray[i]);  
     
   }
