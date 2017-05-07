@@ -6,9 +6,19 @@ export PS4="% "
 #GENERAL USE:
 #burst [FILE] [OPTIONS] 
 
-./burst data.txt
+./burst "data.txt -v"
 wc --lines data.txt
 ls data-[0-9]*.txt | xargs -I% wc --lines %
 
 cat data-[0-9]*.txt | diff - data.txt
-#rm data-[0-9]*.txt
+
+rm data-[0-9]*.txt
+
+
+./burst "data.txt -l 250"
+ls
+wc --lines data.txt
+ls data-[0-9]*.txt | xargs -I% wc --lines %
+
+cat data-[0-9]*.txt | diff - data.txt
+rm data-[0-9]*.txt

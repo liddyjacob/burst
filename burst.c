@@ -48,6 +48,8 @@ int main(int argc, char* argv[]){
     int lines = 500;
     bool verbose = false;
 
+    if (n_tokens > 1){
+    
     if (strcmp(nargv[1], "-l") == 0 ){
 
         if (n_tokens <= 2){
@@ -56,10 +58,10 @@ int main(int argc, char* argv[]){
         }
  
         char* input = strdup(nargv[2]);
-        printf("%s\n", input);
+        
         int ln = strlen(input);
 
-        printf("%d\n",ln); 
+         
 
         for( int i = 0; i < ln; i++){
           if( !isdigit(input[i]) ){
@@ -71,8 +73,13 @@ int main(int argc, char* argv[]){
         lines = atoi(input);
     } else if (strcmp(nargv[1], "-v") == 0 ){
       verbose = true;
+    } else {
+      fprintf(stderr, "burst: invalid option -- %s\n", nargv[1]);
+      return 1;
     }
-
+    
+    }
+    
     if (n_tokens > 2){ 
 
     if (strcmp(nargv[2], "-l") == 0 ){
@@ -82,10 +89,10 @@ int main(int argc, char* argv[]){
           return 1;
         }
         char* input = strdup(nargv[3]);
-        printf("%s\n", input);
+        
         int ln = strlen(input);
 
-        printf("%d\n",ln); 
+         
 
 
         for( int i = 0; i < ln; i++){
@@ -97,10 +104,12 @@ int main(int argc, char* argv[]){
 
         lines = atoi(input);
     }
-    if (n_tokens == 4)
+    if (n_tokens >= 4)
     if (strcmp(nargv[3], "-v") == 0){
       verbose = true;
-
+    } else if (strcmp(nargv[2], "-l") != 0){
+      fprintf(stderr, "burst: invalid option -- %s\n", nargv[3]);
+      return 1;
     }
  
     }

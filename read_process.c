@@ -46,10 +46,15 @@ int read_process(const char filepath[], int linesperfile, bool verbose){
   struct archive* a = archive_read_new();
   archive_read_support_filter_all(a);
   archive_read_support_format_raw(a);
-  if (verbose)
-    fprintf(stdout, "Archive opened.\n"); 
+
   //Open archive:
-  archive_read_open_filename(a, filepath, 10240);
+  if (archive_read_open_filename(a, filepath, 10240) == ARCHIVE_FATAL){
+    fprintf(stderr, "File %s failed to open\n", filepath);
+    return 1;
+  }
+
+  if (verbose)
+    fprintf(stderr, "Archive opened.\n"); 
 
   //Process the file - split into pieces
   int err = split(a, filepath, linesperfile, verbose);
@@ -81,24 +86,26 @@ struct threaddata_t{
     char* buf; //Buncha data from a file 
     int size; //Amount of stuff
 
+    bool verbose;//Is verbose option on?
 
     struct threaddata_t* pnxt_thread;
 };
 
 void* process_file(void* args){
-  #ifdef DEBUG
-    fprintf(stderr, "Process %d starting\n");//, data->id);
-  #endif
+
 
 
   struct threaddata_t* data = args;
+  
+  if (data->verbose)
+    fprintf(stderr, "Process %d starting\n", data->id);//, data->id);
+
 
   //Output this threads info to file descriptor it holds
   write(data->fd, data->buf, data->size);
 
-  #ifdef DEBUG
+  if (data->verbose)
     fprintf(stderr, "Process %d Finished: Data written to file.\n", data->id);
-  #endif
 
   return &(data->status); 
 }
@@ -119,10 +126,6 @@ struct linenode{
   int size;
   struct linenode* next;
 };
-
-//void newname - make a file go from file.extension to file-index.
-
-void new_name(char* newname, const char* oldname, int file_index);
 
  
 int split(struct archive* a, const char filename[], int linesperfile, bool verbose) {
@@ -319,45 +322,34 @@ int split(struct archive* a, const char filename[], int linesperfile, bool verbo
     threadarray[i].buf = strndup(head_line->buf, head_line->size); 
     threadarray[i].id = i;
     threadarray[i].size = head_line->size;
+    threadarray[i].verbose = verbose;
 
-    //Create the name of the file
-    /*
-      file(index).ext
-      
-      index = numfiles + 1
-      malloc(sizeof(filename) + (int)log(numfiles + 1) + 1); 
-      Explination:
-
-  sizeof(filename)       -- must reserve memory for sizeof(file.ext)
-  (int)log(numfiles+1)   -- must reserve memory for log(index) -- see table
-  +1                     -- must reserve memory for rounding down of ^
-       n 1 2 3 4 5 6 7 8 9 10
-intlog n 0 0 0 0 0 0 0 0 0 1
-
-    */
-    //Delete fname when filedescriptor has been created-
-
+    //Create file name: 
     char* fname = malloc(sizeof(original_name) + (int)log(numfiles - i) + 1);
     sprintf(fname, "%s-%d%s", firstpart, numfiles - i, extension);
 
 
     #ifdef DEBUG
-    fprintf(stderr, "New file name: %s", newfname);
+    fprintf(stderr, "New file name: %s\n", fname);
     #endif
 
     //Now open file based off name
     int newfd = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
     //Finally, pass this to the thread
-    
-    free(fname);
-
-//    free(newfname);
-
     if (newfd < 0){
       fprintf(stderr, "New file %s could not be create\n", fname);
       return 1;
     }
     threadarray[i].fd = newfd; 
+
+    if (verbose){
+      fprintf(stderr, "File %s has been created or opened.\n", fname);
+    }
+    //Free the file name.    
+    free(fname);
+
+
 
     #ifdef DEBUG
     fprintf(stderr, "Thread %d ready\n", i);
@@ -375,15 +367,14 @@ intlog n 0 0 0 0 0 0 0 0 0 1
   //Wait for threads  to finish  
   for (int i = 0; i < numfiles; ++i){
 
-    #ifdef DEBUG
-    fprintf(stderr, "read() %d waiting\n", threadarray[i].id);
-    #endif
+    if (verbose)
+      fprintf(stderr, "Thread %d waiting\n", threadarray[i].id);
     
     pthread_join(threadarray[i].tid, NULL);
 
-    #ifdef DEBUG
-    fprintf(stderr, "read() %d finished\n", threadarray[i].id);
-    #endif
+    if (verbose)
+      fprintf(stderr, "Thread %d finished\n", threadarray[i].id);
+    
   }
 
   //Go through every thread and delete it. Also - when dynamic buffers
@@ -393,14 +384,4 @@ intlog n 0 0 0 0 0 0 0 0 0 1
 
   return 0;
 }
-
-
-
-void new_name(char* newname, const char* oldname, int file_index){
-    oldname = strdup(newname);
-  char buffer[20];
-  snprintf(buffer,12, "%d", file_index);
-  strcat(newname, buffer);
-}
-
 
