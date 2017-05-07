@@ -13,6 +13,8 @@
 */
 
 //Dependancy *HELL*
+
+#include <stdbool.h> //Booleans
 #include <math.h> // log
 #include <archive.h> //libarchive - 
 #include <archive_entry.h>
@@ -25,7 +27,7 @@
 #include <errno.h> //For fileno? 
 #include <fcntl.h>
 #include <sys/stat.h> //S_IRUSR
-#include <stdlib.h>
+#include <stdlib.h> //itoa
 
 //Take in 512 bytes at a time
 #define BLKSIZE 512
@@ -50,64 +52,64 @@ int read_process(const char* filepath, int linesperfile){
   //Process the file - split into pieces
   int err = split(a, filepath, linesperfile);
 
+  if (err != 0){
+    fprintf(stderr, "An error ocurred in split()\n");
+  }
+
   //Close and finish read_process.
   archive_read_close(a);
-
-  
   return err;
 }
 
 
 /*
-  Assume file is so many bytes(for now)
-  TODO: FIX this. Allow different byte sizes.
-  TODO: CONVERT this. Specify lines, instead of byte size.
-  TODO: Add option to output an archive.
-
-*/
-
-/*
   threaddata_t - the information needed to be 
     passed in
-
+    Also: A linked list that will contain SIZE bytes of charaters
 */
 struct threaddata_t{
     int id; // id
     int status; // status
+    pthread_t tid; // thread id
+
 
     int fd; //Filedescriptor - for writing data
     char* buf; //Buncha data from a file 
     int size; //Amount of stuff
-    pthread_t tid; // thread id
+
+
     struct threaddata_t* pnxt_thread;
 };
 
 void* process_file(void* args){
+  #ifdef DEBUG
+    fprintf(stderr, "Process %d starting\n");//, data->id);
+  #endif
+
 
   struct threaddata_t* data = args;
-  #ifdef DEBUG
-    fprintf(stderr, "Amount of data: %d\n", data->size);
-  #endif
 
   //Output this threads info to file descriptor it holds
   write(data->fd, data->buf, data->size);
 
   #ifdef DEBUG
-    fprintf(stderr, "Process %d starting\n", data->id);
+    fprintf(stderr, "Process %d Finished: Data written to file.\n", data->id);
   #endif
 
-  fprintf(stderr, "Process %d ending\n", data->id);
-  
-  return &(data->status); //Did the thread finish?
+  return &(data->status); 
 }
 
+/*
+  bufnode: A linked list of blocks of data
+*/
 struct bufnode{
   char buf[BLKSIZE];
   int size;
   struct bufnode* next;
+  struct bufnode* prev;
 };
 
-//Like bufnode, but any amount of lines:
+//Like bufnode, but blocks have no set size, but a set amount of lines(\n's):
 struct linenode{
   char* buf;
   int size;
@@ -116,39 +118,37 @@ struct linenode{
 
 //void newname - make a file go from file.extension to file-index.
 
-void new_name(char* newname, char* oldname, int file_index);
+void new_name(char* newname, const char* oldname, int file_index);
 
  
 int split(struct archive* a, const char* filename, int linesperfile) {
-  
-  //  int numfiles = 2;  
-
   //One thread for each file
   //Linked list of threads
-  //create head of linked list:
-  struct threaddata_t* head_thread = NULL;//malloc(sizeof(struct threaddata_t));
+  struct threaddata_t* head_thread = NULL;
 
   //Set up archive:
   struct archive_entry* entry;
   archive_read_next_header(a, &entry);
 
   //The buffer of data for each thread, to be filled
-  char buf[512];
-
-  //  struct threaddata_t* next_thread = head_thread;
-
-  int numfiles = 0;
+  char buf[BLKSIZE];
+  int size_load = 0;
+  int lastsize = 0;
 
   struct bufnode* head_buf = NULL;
+  struct bufnode* tail_buf = NULL;
+
   int numblocks = 0;
+  bool looped = false;
   //Preload buffers into linkedlist of buffers:
   while(1){
-    int size_load = archive_read_data(a, buf, 512);
+    size_load = archive_read_data(a, buf, 512);
 
     if (size_load < 0)
       return 1;
     if (size_load == 0)
       break;
+    lastsize = size_load;
 
     struct bufnode* save = head_buf;
 
@@ -159,34 +159,50 @@ int split(struct archive* a, const char* filename, int linesperfile) {
     head_buf = malloc(sizeof(struct bufnode));
     head_buf->next = save;
 
+    if (looped == false){
+      tail_buf = head_buf;
+      looped = true;
+    } else {
+      save->prev = head_buf;
+    }
+
     //                ||                                            /\
     //WHY THE HELL IS \/ NOT SAVING TO SIZE LOAD                    || 
     head_buf->size = size_load;
+    
+
+    #ifdef DEBUG
+    fprintf(stderr, "%d == %d",head_buf->size, size_load);
+    #endif
+
     strcpy(head_buf->buf, buf);
     ++numblocks;
   }
 
+  head_buf->prev = NULL;
+  head_buf->size = lastsize;
+
   #ifdef DEBUG
   fprintf(stderr, "Head size: %d\n", head_buf->size);
-
-  fprintf(stderr, "Head: %s\nNext: %s\n", strndup(head_buf->buf, 280), head_buf->next->buf);
-
   #endif
+
+  #ifdef DEBUG
+  fprintf(stderr, "lastsize: %d\n", lastsize);
+  #endif
+  //Set up to turn lined list of buffers into linked list of lines:
 
   int bufindex = 0;
   int numlines = 0;
   int sizeoflines = 0;
+  int numfiles = 0;  
 
-  int this_loadsize = head_buf->size;
-
+  int this_loadsize = tail_buf->size;
   char* lineblock = malloc(linesperfile * MAX_LINESIZE);
-
   struct linenode* head_line = NULL;
 
   //Turn buffers into linked list of lines
   while(1){
-    //newline
-
+    
     if (numlines == linesperfile){
       struct linenode* save = head_line;
       head_line = malloc(sizeof(struct linenode));
@@ -203,9 +219,14 @@ int split(struct archive* a, const char* filename, int linesperfile) {
       //A new file must be created for this
       ++numfiles;
     }
-    if (bufindex == this_loadsize){
+    if (bufindex >= this_loadsize){
       //Go to next node:
-      struct bufnode* save = head_buf->next;
+      struct bufnode* save = tail_buf->prev;
+  
+      #ifdef DEBUG
+      fprintf(stderr, "End of buffer\n");
+      #endif
+
 
       if (save == NULL){ //Put last set of lines in
         
@@ -214,36 +235,34 @@ int split(struct archive* a, const char* filename, int linesperfile) {
         head_line->size = sizeoflines; 
         head_line->buf = lineblock == NULL ? NULL : strndup(lineblock, sizeoflines);        
         head_line->next = save_l;
+      
       #ifdef DEBUG
-      fprintf(stderr, "Block of line number: %d\nSize of block: %d\n\n", numfiles, sizeoflines);
+      fprintf(stderr, "END:Block of line number: %d\nSize of block: %d\n\n", numfiles, sizeoflines);
       #endif
 
-        free(head_buf);
-        head_buf = save;
+        free(tail_buf);
+        tail_buf = save;
         ++numfiles;
 
         break;
       } 
       //Otherwise:
-      free(head_buf);
-      head_buf = save;
-
-
-
+      free(tail_buf);
+      tail_buf = save;
 
       //reset variables
       bufindex = 0;
-      this_loadsize = head_buf->size;
+      this_loadsize = tail_buf->size;
+      fprintf(stderr, "this_loadsize: %d\n", this_loadsize);
     }
 
     //Now push 
-    lineblock[sizeoflines] = head_buf->buf[bufindex];
-    if (head_buf->buf[bufindex] == '\n'){
+    lineblock[sizeoflines] = tail_buf->buf[bufindex];
+    if (tail_buf->buf[bufindex] == '\n'){
       ++numlines;
     }
     ++sizeoflines;
     ++bufindex;
-
   }
   free(lineblock);
 
@@ -252,29 +271,35 @@ int split(struct archive* a, const char* filename, int linesperfile) {
   fprintf(stderr, "out of loop 2\n");
   #endif
 
-int fileno = 0;
+  struct threaddata_t* threadarray = calloc(numfiles, sizeof(struct threaddata_t));
+
+
+  if (!threadarray) {
+    fprintf(stderr, "Unable to allocate thread array\n");
+    return 1;
+  }
+
   //save=head_thread
   //head thread->malloc
   //head thread->pnext_thread = save 
   //Create a thread for each file:
   //Loop until as many files are created as needed:
-  while (1){
-    
-    struct threaddata_t* save = head_thread;
-    struct linenode* save_l = head_line->next;
+
+  // Because I can't figure out file names, I am going to use a through z.
+
+  char alphabet[26] = "abcdefghijklmnopqrstuvwxyz";
+
+  for (int i = 0; i < numfiles; ++i) {
+   int fileno = i + 1;
+
+
 
     //Create thread after there is data to be put in:
-    head_thread = malloc(sizeof(struct threaddata_t));
-    head_thread->pnxt_thread = save;//Put in the next thread
-    if (!head_thread) {
-      fprintf(stderr, "Unable to allocate thread info\n");
-      return 1;
-    }
+    threadarray[i].buf = strndup(head_line->buf, head_line->size); 
+    threadarray[i].id = i;
+    threadarray[i].size = head_line->size;
+    fprintf(stderr, "Time to start this fukin' party again goddammit\n");
  
-    head_thread->buf = strndup(head_line->buf, head_line->size); 
-    head_thread->id = fileno;
-    head_thread->size = head_line->size;
-
     //Create the name of the file
     /*
       file(index).ext
@@ -291,10 +316,9 @@ intlog n 0 0 0 0 0 0 0 0 0 1
 
     */
     //Delete newfname when filedescriptor has been created-
-    int filesize = (int)sizeof(filename) + (int)log(fileno + 1) + 2;
-    char* newfname = malloc(filesize); 
-    new_name(newfname, filename, fileno + 1);
-    
+    char newfname[4];// = alphabet[i];// = malloc(filesize); 
+  
+    sprintf(newfname, "%c.txt", alphabet[i]); 
 
     #ifdef DEBUG
     fprintf(stderr, "New file name: %s", newfname);
@@ -304,96 +328,63 @@ intlog n 0 0 0 0 0 0 0 0 0 1
     int newfd = open(newfname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     //Finally, pass this to the thread
     
-    free(newfname);
+//    free(newfname);
 
     if (newfd < 0){
       fprintf(stderr, "New file %s could not be create\n", newfname);
       return 1;
     }
-    head_thread->fd = newfd; 
+    threadarray[i].fd = newfd; 
 
     #ifdef DEBUG
-    fprintf(stderr, "Thread %d ready\n", fileno);
+    fprintf(stderr, "Thread %d ready\n", i);
     #endif
 
-    //Here is where the thread branches off to do some work:
-    pthread_create(&head_thread->tid, NULL, process_file, head_thread);  
-
-
-         fileno++;   
+    struct linenode* save_l = head_line->next;
     free(head_line);
     head_line = save_l;
 
-
-    //all covered:
-    if (head_line == NULL)
-      break;
+    #ifdef DEBUG
+    fprintf(stderr, "Did the fucking linked list cause another fucking error?\n");
+    #endif
+    //Here is where the thread branches off to do some work:
+    pthread_create(&threadarray[i].tid, NULL, process_file, &threadarray[i]);  
     
   }
 
-  struct threaddata_t* curr_thread = head_thread;
-
+  //Wait for threads  to finish  
   for (int i = 0; i < numfiles; ++i){
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d waiting\n", curr_thread->id);
+    fprintf(stderr, "read() %d waiting\n", threadarray[i].id);
     #endif
     
-    pthread_join(curr_thread->tid, NULL);
+    pthread_join(threadarray[i].tid, NULL);
 
     #ifdef DEBUG
-    fprintf(stderr, "read() %d finished\n", curr_thread->id);
+    fprintf(stderr, "read() %d finished\n", threadarray[i].id);
     #endif
-    curr_thread = curr_thread->pnxt_thread;
   }
 
   //Go through every thread and delete it. Also - when dynamic buffers
   //happen, make sure buffer is deleted too!
 
-
-  //TODO: Close the damn files.
-  for (int i = 0; i < numfiles; i++){
-
-    #ifdef DEBUG
-    fprintf(stderr, "Deleting thread %d\n", i);
-    #endif
-    if (close(head_thread->fd) == -1)
-      fprintf(stderr, "Filedescriptor %d could not close\n", head_thread->fd);
-
-    struct threaddata_t* save = head_thread->pnxt_thread;
-
-    free(head_thread);
-
-    head_thread = save;
-  }
-
-  curr_thread = head_thread; 
-
+  free(threadarray);
 
   return 0;
 }
 
 
 
-void new_name(char* newname, char* oldname, int file_index){
-    //const char lookfor = '.'; //Look for a .
+void new_name(char* newname, const char* oldname, int file_index){
+  fprintf(stderr, "Hello\n\n\n\nHELLOFKER\n");
 
-//      char* ret;
-//      ret = strstr(oldname, ".");
-  int i=0;
-  while(*(oldname + i) != '.'){
-    newname[i] = oldname[i];
-    ++i;
-  }
-
-  char* buffer = malloc(log(file_index) + 3);  
-  int n;
-  n = sprintf(buffer, "-%d", file_index);
- 
+  oldname = strdup(newname);
+  char buffer[20];
+  snprintf(buffer,12, "%d", file_index);
   strcat(newname, buffer);
-  strcat(newname, strstr(oldname, "."));
-  
-  free(buffer);
+  fprintf(stderr, "Hello\n\n\n\nHELLOFKER\n");
+//  sprintf(newname, "%s(%d)",oldname, file_index);
 }
 
 

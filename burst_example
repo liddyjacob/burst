@@ -1,3 +1,4 @@
+export PS4="% "
 #Add script stuff for testing here:
 
 #File: burst_example
@@ -5,9 +6,9 @@
 #GENERAL USE:
 #burst [FILE] [OPTIONS] 
 
-burst data.txt
+./burst data.txt
 wc --lines data.txt
-wc --lines data.txt(1)
-wc --lines data.txt(2)
+ls data-[0-9]*.txt | xargs -I% wc --lines %
 
-cat data.txt(1) data.txt(2) | diff - data.txt
+cat data-[0-9]*.txt | diff - data.txt
+#rm data-[0-9]*.txt
