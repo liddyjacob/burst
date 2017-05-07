@@ -11,7 +11,7 @@
 #define INCLUDED_READ_PROCESS_H
 
 /* Read the file, then fork it in split*/
-int read_process(const char* filepath, int linesperfile);
+int read_process(const char* filepath, int linesperfile, bool verbos);
 
 /* Fork the file depending on linesperfile */
 void split(int, const char*);

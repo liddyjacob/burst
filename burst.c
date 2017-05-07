@@ -22,13 +22,12 @@
 
 */
 
+#include <stdbool.h>//Bools
 #include "makeargv.h" // Make argument array
 #include <unistd.h> // Fork()
 #include <stdlib.h> // Free()
 #include "read_process.h"
-#ifdef DEBUG
 #include <stdio.h> //printf
-#endif
 
 
 //TODO: THIS is really messy - fix it.
@@ -45,19 +44,77 @@ int main(int argc, char* argv[]){
       printf("|%s|\n", nargv[i]);
     #endif
 
-    
-//    parse(nargv);//
 
-    //First argument 
-    
-    read_process(nargv[0], 50);
+    //See what arguments we have:
+    printf("%s\n", nargv[1]);
+
+
+    int lines = 500;
+    bool verbose = false;
+
+    if (strcmp(nargv[1], "-l") == 0 ){
+
+        if (n_tokens <= 2){
+            fprintf(stderr, "Usage: -l (Number of lines)");
+            return 1;
+        }
+ 
+        char* input = strdup(nargv[2]);
+        printf("%s\n", input);
+        int ln = strlen(input);
+
+        printf("%d\n",ln); 
+
+        for( int i = 0; i < ln; i++){
+          if( !isdigit(input[i]) ){
+            fprintf(stderr, "Usage: -l (Number of lines)");
+            return 1;
+          }
+        }
+
+        lines = atoi(input);
+    } else if (strcmp(nargv[1], "-v") == 0 ){
+      verbose = true;
+    }
+
+    if (n_tokens > 2){ 
+
+    if (strcmp(nargv[2], "-l") == 0 ){
+
+        if (n_tokens == 3)
+          fprintf(stderr, "Usage: -l (Number of lines)\n");
+
+        char* input = strdup(nargv[3]);
+        printf("%s\n", input);
+        int ln = strlen(input);
+
+        printf("%d\n",ln); 
+
+
+        for( int i = 0; i < ln; i++){
+          if( !isdigit(input[i]) ){
+            fprintf(stderr, "Usage: -l (Number of lines)\n");
+            return 1;
+          }
+        }
+
+        lines = atoi(input);
+    }
+    if (n_tokens == 4)
+    if (strcmp(nargv[3], "-v") == 0){
+      verbose = true;
+
+    }
+ 
+    }
+   
+#ifdef DEBUG
+fprintf(stderr, "Entering the function\n");
+#endif
+    read_process(nargv[0], lines, verbose);
     
 
     /* Then create files, and use fork to split into different processes */
-
-    fork();
-
-
 
     free(nargv[0]);
     return 0;

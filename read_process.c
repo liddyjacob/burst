@@ -38,14 +38,16 @@ int split(struct archive* a, const char*, int);
 
 
 //TODO add options for argument to process.
-int read_process(const char* filepath, int linesperfile){
+int read_process(const char* filepath, int linesperfile, bool verbos){
 
 
   //Setup many archive types to be opened
+
   struct archive* a = archive_read_new();
   archive_read_support_filter_all(a);
   archive_read_support_format_raw(a);
-
+  if (verbos)
+    fprintf(stdout, "Archive opened.\n"); 
   //Open archive:
   archive_read_open_filename(a, filepath, 10240);
 
@@ -58,6 +60,8 @@ int read_process(const char* filepath, int linesperfile){
 
   //Close and finish read_process.
   archive_read_close(a);
+  if (verbos)
+    fprintf(stdout, "Archive closed.\n"); 
   return err;
 }
 
@@ -253,8 +257,7 @@ int split(struct archive* a, const char* filename, int linesperfile) {
       //reset variables
       bufindex = 0;
       this_loadsize = tail_buf->size;
-      fprintf(stderr, "this_loadsize: %d\n", this_loadsize);
-    }
+   }
 
     //Now push 
     lineblock[sizeoflines] = tail_buf->buf[bufindex];
@@ -298,8 +301,7 @@ int split(struct archive* a, const char* filename, int linesperfile) {
     threadarray[i].buf = strndup(head_line->buf, head_line->size); 
     threadarray[i].id = i;
     threadarray[i].size = head_line->size;
-    fprintf(stderr, "Time to start this fukin' party again goddammit\n");
- 
+
     //Create the name of the file
     /*
       file(index).ext
@@ -377,14 +379,10 @@ intlog n 0 0 0 0 0 0 0 0 0 1
 
 
 void new_name(char* newname, const char* oldname, int file_index){
-  fprintf(stderr, "Hello\n\n\n\nHELLOFKER\n");
-
-  oldname = strdup(newname);
+    oldname = strdup(newname);
   char buffer[20];
   snprintf(buffer,12, "%d", file_index);
   strcat(newname, buffer);
-  fprintf(stderr, "Hello\n\n\n\nHELLOFKER\n");
-//  sprintf(newname, "%s(%d)",oldname, file_index);
 }
 
 
